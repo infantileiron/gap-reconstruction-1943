@@ -1,0 +1,1 @@
+export default function PageTitle({chapter,title,description}:{chapter:string;title:string;description:string}){return <header className="page-title"><span className="eyebrow">OBSERVATION GAP ARCHIVE / {chapter}</span><h1>{title}</h1><p>{description}</p></header>}

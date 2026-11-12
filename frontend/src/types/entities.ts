@@ -1,0 +1,10 @@
+export type User={email:string;name:string;role:string};
+export type Dataset={id:string;name:string;source:string;row_count:number;stations:string[];observed:number;missing:number};
+export type Mask={id:string;name:string;dataset_id:string;station:string;start_hour:number;end_hour:number;target_times:number[]};
+export type Study={id:string;name:string;dataset_id:string;mask_id:string;q_per_hour:number;observation_r:number;initial_variance:number;initial_level:number|null};
+export type Point={time_hour:number;training_value:number|null;original_value?:number|null;is_gap?:boolean;rts_mean:number;filtered_mean:number;filtered_variance:number;state_variance:number;observation_variance:number;state_low:number;state_high:number;observation_low:number;observation_high:number;pchip:number|null;rts_output?:number;pchip_output?:number|null;is_target?:boolean;validation_truth?:number|null};
+export type Metrics={target_count:number;rts_available_count:number;pchip_available_count:number;common_count:number;rts_mae_common:number|null;pchip_mae_common:number|null;rts_mae_all:number|null;pchip_mae_all:number|null;rts_observation_interval_covered:number;rts_observation_interval_count:number;rts_observation_interval_coverage:number|null};
+export type Result={station:string;point_count:number;observed_count:number;missing_count:number;pchip_unfilled_gaps:number;production:{series:Point[];initial_level_used:number};validation:{series:Point[];targets:Point[];metrics:Metrics;initial_level_used:number};mask:Mask;study:Study;checksum:string;limitations:string[]};
+export type Run={id:string;study_id:string;status:string;result:Result;error:string};
+export type Review={id:string;run_id:string;comment:string;status:string;reviewer:string};
+export type Report={id:string;run_id:string;review_id:string;title:string};

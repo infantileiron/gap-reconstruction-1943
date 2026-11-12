@@ -1,0 +1,1 @@
+import type {Point} from '../types/entities';export function linePath(points:Point[],x:(t:number)=>number,y:(v:number)=>number,key:'pchip'|'rts_mean'){let path='',connected=false;for(const p of points){const v=p[key];if(v===null){connected=false;continue}path+=(connected?' L':' M')+x(p.time_hour)+' '+y(v);connected=true}return path}
