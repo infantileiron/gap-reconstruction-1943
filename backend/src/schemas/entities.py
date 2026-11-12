@@ -27,6 +27,9 @@ class ReconstructionStudyInput(InputModel):
  initial_level:float|None=Field(default=None,ge=-1000000,le=1000000)
 class RunInput(InputModel):
  study_id:str
+class BatchReviewInput(InputModel):
+ name:str=Field(min_length=2,max_length=100)
+ study_ids:list[str]=Field(min_length=1,max_length=200)
 class ReviewInput(InputModel):
  run_id:str
  comment:str=Field(min_length=5,max_length=2000)

@@ -3,6 +3,7 @@ from pathlib import Path
 import redis
 from src.config.settings import REDIS_URL
 from src.services.run import execute
+from src.services.batch_review import execute as execute_batch, QUEUE_NAME
 from src.utils.repository import init_db
 logging.basicConfig(level=logging.INFO)
 def main():
@@ -12,6 +13,8 @@ def main():
         try:
             item=client.blpop("gap-reconstruction:jobs", timeout=3)
             if item: execute(item[1].decode())
+            batch=client.blpop(QUEUE_NAME, timeout=3)
+            if batch: execute_batch(batch[1].decode())
         except Exception:
             logging.exception("worker failure");time.sleep(2)
 if __name__=="__main__": main()

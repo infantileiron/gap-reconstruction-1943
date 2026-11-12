@@ -2,7 +2,7 @@ import json, sqlite3, threading
 from dataclasses import asdict
 from fastapi import HTTPException
 from src.config.settings import DATABASE_URL
-TABLES = ("datasets", "masks", "studies", "runs", "reviews", "reports", "users", "audit")
+TABLES = ("datasets", "masks", "studies", "runs", "reviews", "reports", "users", "audit", "batch_reviews")
 _LOCK = threading.RLock()
 def connect():
     if DATABASE_URL.startswith("sqlite:///"):

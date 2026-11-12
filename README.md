@@ -6,7 +6,7 @@
 
 上游 `station_gaps_202611.csv` 为3测站、480小时的1440条模拟观测。团队原来跨列手填，长缺口容易过平滑、边缘外推未标、验证时不慎用到被遮挡真值。本工程替代原始核查、遮挡锁定、固定参数重建、误差复核与归档，下游观测组据此安排实际质控讨论。
 
-ObservationDataset原始观测、GapMask连续验证掩码、ReconstructionStudy参数方案、ReconstructionRun运行、GapReview复核、Report报告，全部贯穿存储/API/界面。六页：缺测档案、原始观测、连续遮挡、重建参数、插补与验证、缺口复核。总览和结果共用GapChart与GapSummary。
+ObservationDataset原始观测、GapMask连续验证掩码、ReconstructionStudy参数方案、ReconstructionRun运行、GapReview复核、Report报告，全部贯穿存储/API/界面。六页：缺测档案、原始观测、连续遮挡、重建参数、插补与验证、缺口复核。总览和结果共用GapChart与GapSummary。另有BatchReview离线批量复核实体（第7页），供观测组每晚对多测站多方案一次性复核，不改变上述单次复核口径。
 
 ## 快速启动
 
@@ -17,6 +17,22 @@ docker compose exec -T backend python -m scripts.seed_demo
 ```
 
 前端 http://localhost:18228 ，API http://localhost:19228/docs ，PostgreSQL端口17728。恰好frontend/backend/worker/db/redis五服务，全健康检查；数据库、Redis与共享产物用命名卷。清理测试数据：`docker compose down -v --remove-orphans`。
+
+## 离线批量复核（夜间多方案）
+
+Web入口在第7页「批量复核」，勾选多个重建方案建批；离线/无Redis环境用CLI（容器内执行，自动强制inline本进程运行，不依赖队列）：
+
+```sh
+# 复核指定方案或全部方案
+docker compose exec -T backend python -m scripts.batch_review_cli --studies study-a,study-b --name "11日夜批"
+docker compose exec -T backend python -m scripts.batch_review_cli --all
+# 中断后续跑：已完成且输入未变的项跳过，不重复计算；有失败项退出码为1便于脚本发现
+docker compose exec -T backend python -m scripts.batch_review_cli --batch batch-xxxx --resume
+```
+
+逐项隔离try/except：单个坏方案只在该项记录失败原因，不拖垮其他方案，批次状态在全部成功/部分失败/全部失败间区分。每项独立保留原始缺口补值（RTS/PCHIP）、独立遮挡重算的逐点误差与覆盖、边缘不可估清单；全部复用单次复核`analyze`同一入口，遮挡序列另建训练数组、重新初始化，口径与单次完全一致（有测试核对全部metrics与checksum）。
+
+输入指纹（数据集行+掩码+参数的SHA256）随项落盘：续跑或重跑时指纹一致才跳过，数据或参数变更则把旧指纹留痕（previous_fingerprint）并拒绝沿用、强制重算；批次整体已完成时也会先做指纹预检。每算完一项立即落盘，中断不丢已完成项。汇总按有效遮挡点（掩码目标原本有值，analyze已保证）等权加权，原始缺失不进入分母；PCHIP边缘不可估单列且不进入PCHIP分母，RTS分母仍为全部有效遮挡点。批次JSON产物写入共享卷`ARTIFACT_DIR/{batch_id}.batch.json`。
 
 | 账号 | 角色 | 权限 |
 |---|---|---|
@@ -65,6 +81,10 @@ RTS使用未来已观测值，自动初值也可能位于序列起点之后，�
 
 两方法公平MAE只在双方均可估的共有内点上计算；同时公开target_count、各自可估数量和独立MAE。PCHIP边缘目标不可估时common_count可为0，共有MAE返回null，RTS自身计数和误差另列。原始未知值从不进验证分母。
 
+## 批量复核口径
+
+批量复核不引入第二套算法：每个方案都调用与单次运行完全相同的`statistics.analyze`，生产重建与遮挡验证仍分两次独立重算。批次只在其上做三件事——逐项留痕（补值、逐点遮挡误差、失败原因、输入指纹）、断点续跑（每项算完即落盘，未变更的完成项跳过，变更项旧指纹留痕后重算）、加权汇总（有效遮挡点等权，原始缺失不进分母，边缘不可估单列）。失败项不参与汇总分母，也不影响其他项；引用的方案/掩码/数据被删时该项记为失败并保留原因。CLI在`scripts/batch_review_cli.py`，服务端到端核对在`tests/test_batch_review.py`（纯标准库可跑，不依赖外部服务）。
+
 ## 技术与结构
 
 | 层 | 技术 |
@@ -76,7 +96,7 @@ RTS使用未来已观测值，自动初值也可能位于序列起点之后，�
 
 78职责源文件。后端src/{routes,controllers,services,models,schemas,middlewares,utils,constants,config}，前端src/{api,stores,types,components/common,hooks,pages,router,utils,constants}。TEXT主键+JSON文本业务表，DDL在backend/migrations/001_initial.sql；advisory lock保护首次并发建表。
 
-枚举：后端src/constants/enums.py角色/状态及src/constants/domain.py配额/区间常数；前端src/constants/enums.ts。环境DATABASE_URL、REDIS_URL、JWT_SECRET、SEED_DEMO、TASK_MODE、ARTIFACT_DIR及端口/口令见.env.example。
+枚举：后端src/constants/enums.py角色/运行/复核/批次状态及src/constants/domain.py配额/区间常数；前端src/constants/enums.ts。环境DATABASE_URL、REDIS_URL、JWT_SECRET、SEED_DEMO、TASK_MODE、ARTIFACT_DIR及端口/口令见.env.example。
 
 Seed固定2309，480小时×3站=1440条，LP-01有41个短/长/边缘缺口；其他站另有缺口。完整带噪模拟参考truth保留但不入算法。SEED_DEMO=true自动seed，自然键insert-only，保留手工修改、重复不新增，失败记录日志。每次研究选一个掩码所属测站运行480时点。
 

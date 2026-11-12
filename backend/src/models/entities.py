@@ -45,6 +45,17 @@ class GapReview:
  reviewer:str=''
  created_at:str=''
 @dataclass
+class BatchReview:
+ id:str
+ name:str
+ study_ids:list[str]
+ status:str='queued'
+ items:list[dict]=field(default_factory=list)
+ summary:dict[str,Any]=field(default_factory=dict)
+ error:str=''
+ created_at:str=''
+ updated_at:str=''
+@dataclass
 class Report:
  id:str
  run_id:str
